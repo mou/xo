@@ -10,6 +10,13 @@ import com.akimi808.xo.server.SocketProcessor;
  * @author Andrey Larionov
  */
 public abstract class Message {
+
+    private final Integer sessionId;
+
+    public Message(Integer sessionId) {
+        this.sessionId = sessionId;
+    }
+
     public static boolean hasComplete(ByteBuffer buffer) {
         boolean hasComplete = false;
         buffer.mark();
@@ -26,17 +33,18 @@ public abstract class Message {
     public static Message read(ByteBuffer buffer) {
         short messageLen = readShort(buffer);
         byte messageType = readByte(buffer);
-        return readMessageByType(messageType, buffer);
+        int sessionId = readInteger(buffer);
+        return readMessageByType(sessionId, messageType, buffer);
     }
 
-    private static Message readMessageByType(byte messageType, ByteBuffer buffer) {
+    private static Message readMessageByType(Integer sessionId, byte messageType, ByteBuffer buffer) {
         switch (messageType) {
             case Request.TYPE:
-                return Request.read(buffer);
+                return Request.read(sessionId, buffer);
             case Response.TYPE:
-                return Response.read(buffer);
+                return Response.read(sessionId, buffer);
             case Update.TYPE:
-                return Update.read(buffer);
+                return Update.read(sessionId, buffer);
         }
         throw new RuntimeException();
     }
@@ -58,11 +66,11 @@ public abstract class Message {
         return string;
     }
 
-    public static Integer readInteger(RingBuffer buffer) {
-        byte i4 = buffer.take();
-        byte i3 = buffer.take();
-        byte i2 = buffer.take();
-        byte i1 = buffer.take();
+    public static Integer readInteger(ByteBuffer buffer) {
+        byte i4 = buffer.get();
+        byte i3 = buffer.get();
+        byte i2 = buffer.get();
+        byte i1 = buffer.get();
         return (
                 (i1 & 0xFF) |
                 ((i2 & 0xFF) << 8) |
@@ -70,13 +78,33 @@ public abstract class Message {
                 ((i4 & 0xFF) << 24));
     }
 
-    abstract public void handle(Handler handler, Client client);
+    protected static Object[] readParameterValues(ByteBuffer buffer, Type[] parameterTypes) {
+        Object[] values = new Object[parameterTypes.length];
+        for (int i = 0; i < parameterTypes.length; i++) {
+            Type type = parameterTypes[i];
+            values[i] = type.readValue(buffer);
+        }
+        return values;
+    }
+
+    protected static Type[] readParameterTypes(ByteBuffer buffer) {
+        short parametersLen = readShort(buffer);
+        Type[] types = new Type[parametersLen];
+        for (short i = 0; i < parametersLen; i++) {
+            byte repr = readByte(buffer);
+            types[i] = Type.valueOf(repr);
+        }
+        return types;
+    }
+
+    abstract public void handle(Handler handler);
 
     public void write(ByteBuffer buffer) {
         short len = getSizeInBytes();
         byte type = getType();
         buffer.putShort(len);
         buffer.put(type);
+        buffer.putInt(sessionId);
         writeBody(buffer);
     }
 
@@ -90,7 +118,7 @@ public abstract class Message {
     protected abstract short getBodySize();
 
     private short getHeaderSize(){
-        return 3;
+        return 3 + 4;
     }
 
 
@@ -100,5 +128,9 @@ public abstract class Message {
         byte[] bytes = value.getBytes();
         buffer.putShort((short) bytes.length);
         buffer.put(bytes);
+    }
+
+    public Integer getSessionId() {
+        return sessionId;
     }
 }

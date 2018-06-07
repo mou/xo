@@ -170,6 +170,15 @@ public class RingBuffer {
         return writen;
     }
 
+    public int readToByteBuffer(ByteBuffer writeBytes) {
+        int read = 0;
+        while (writeBytes.remaining() > 0 && available > 0) {
+            writeBytes.put(take());
+            read++;
+        }
+        return read;
+    }
+
     public int available() {
         return available;
     }

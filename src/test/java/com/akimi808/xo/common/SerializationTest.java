@@ -1,19 +1,11 @@
-package com.akimi808.xo.server;
-
-import com.akimi808.xo.common.Message;
-import com.akimi808.xo.common.Request;
-import com.akimi808.xo.common.RingBuffer;
-import com.akimi808.xo.common.Type;
-import com.sun.tools.internal.xjc.reader.Ring;
-import org.junit.Test;
+package com.akimi808.xo.common;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
-import static org.junit.Assert.*;
+import org.junit.Test;
+
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Created by akimi808 on 26/02/2018.
@@ -22,7 +14,7 @@ public class SerializationTest {
     @Test
     public void testSerializeSimpleRequest() throws Exception {
         ByteBuffer buffer = ByteBuffer.allocate(1024);
-        Request request = new Request(1, "methodName", new Type[0], new Object[0]);
+        Request request = new Request(1, 1,"methodName", new Type[0], new Object[0]);
         request.write(buffer);
         byte[] expected = {0, 21,
                 1,
@@ -40,7 +32,7 @@ public class SerializationTest {
         ByteBuffer buffer = ByteBuffer.allocate(1024);
         Type[] types = {Type.INTEGER, Type.STRING};
         Object[] values = {768345, "two words"};
-        Request request = new Request(1, "methodWithArguments", types, values);
+        Request request = new Request(1, 1,"methodWithArguments", types, values);
         request.write(buffer);
         byte[] expected = {0, 47,
                 1,
@@ -61,18 +53,18 @@ public class SerializationTest {
 
     @Test
     public void testDeserializeSimpleRequest() {
-        RingBuffer ringBuffer = new RingBuffer(1024);
+        ByteBuffer buffer = ByteBuffer.allocate(1024);
         byte[] expected = {0, 21,
                 1,
                 0, 0, 0, 1,
                 0, 10, 109, 101, 116, 104, 111, 100, 78, 97, 109, 101,
                 0, 0};
         for (int i = 0; i < expected.length; i++) {
-            ringBuffer.put(expected[i]);
+            buffer.put(expected[i]);
 
         }
-        Message message = Message.read(ringBuffer);
-        Request request = new Request(1, "methodName", new Type[0], new Object[0]);
+        Message message = Message.read(buffer);
+        Request request = new Request(1, 1,"methodName", new Type[0], new Object[0]);
         assertEquals(message, request);
 
     }
